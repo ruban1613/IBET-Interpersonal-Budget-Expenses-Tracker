@@ -1,0 +1,21 @@
+# --- User Credentials (replace with your latest superuser info) ---
+user: adminrk16
+password: frad@2025
+token: YOUR_TOKEN
+
+# --- API Commands ---
+
+# Get Auth Token (New URL)
+curl.exe -X POST -d "username=adminrk16&password=frad@2025" http://127.0.0.1:8000/api/token-auth/
+
+# Select Persona
+curl.exe -X PATCH -H "Authorization: Token YOUR_TOKEN" -H "Content-Type: application/json" -d '{\"persona\": \"STUDENT\"}' http://127.0.0.1:8000/api/users/select-persona/
+
+# Create a Category
+curl.exe -X POST -H "Authorization: Token YOUR_TOKEN" -H "Content-Type: application/json" -d '{\"name\": \"Education\"}' http://127.0.0.1:8000/api/categories/
+
+# Create a Budget
+curl.exe -X POST -H "Authorization: Token YOUR_TOKEN" -H "Content-Type: application/json" -d '{\"category\": 1, \"amount\": 500.00, \"start_date\": \"2025-09-01\", \"end_date\": \"2025-09-30\"}' http://127.0.0.1:8000/api/budgets/
+
+
+{"token":"af58c2131468127cf166980503293d21f4e08ebe"}
