@@ -342,6 +342,13 @@ async createInstituteStudent(data: any): Promise<any> {
   });
 }
 
+async updateInstituteStudent(id: number, data: any): Promise<any> {
+  return this.request(`/institute/student-profiles/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  });
+}
+
 async linkInstituteStudent(data: { username: string; institute: number; monthly_fee: number; due_day?: number }): Promise<any> {
   return this.request('/institute/student-profiles/link_by_username/', {
     method: 'POST',
@@ -427,6 +434,13 @@ async sendInstituteNotice(studentProfileId: number, message: string): Promise<an
   return this.request(`/institute/student-profiles/${studentProfileId}/send_notice/`, { 
     method: 'POST',
     body: JSON.stringify({ message })
+  });
+}
+
+async linkToInstitute(data: { institute_name: string; student_name: string; parent_mobile: string; student_id?: number }): Promise<any> {
+  return this.request('/institute/student-profiles/link_to_institute/', {
+    method: 'POST',
+    body: JSON.stringify(data)
   });
 }
 

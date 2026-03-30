@@ -36,10 +36,31 @@ export default function AcademicPortal() {
   };
 
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkData, setLinkData] = useState({ institute_name: '', student_name: '', parent_mobile: '' });
   const [depositAmount, setDepositAmount] = useState('');
   const [depositOTP, setDepositOTP] = useState('');
   const [cacheKey, setCacheKey] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+
+  const handleLinkInstitute = async () => {
+    if (!linkData.institute_name || !linkData.student_name || !linkData.parent_mobile) {
+      setError('Please fill in all fields');
+      return;
+    }
+    try {
+      setLoading(true);
+      setError('');
+      await api.linkToInstitute({ ...linkData, student_id: studentId ? parseInt(studentId) : undefined });
+      setSuccess('Successfully linked to institute!');
+      setShowLinkModal(false);
+      loadPortalData();
+    } catch (err: any) {
+      setError(err.message || 'Linking failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePayFee = async (paymentId: number, amount: number) => {
     if (!paymentId) {
@@ -125,9 +146,36 @@ export default function AcademicPortal() {
             <div style={{ fontSize: '4rem' }}>🛰️</div>
             <h2>No Academic Link Found</h2>
             <p>You (or your child) are not currently enrolled in any registered Institute.</p>
-            <button onClick={() => navigate('/select-module')} className="submit-btn" style={{ marginTop: '1rem' }}>Return Home</button>
+            {error && <div className="error-message" style={{ marginTop: '1rem' }}>{error}</div>}
+            {success && <div className="success-message" style={{ marginTop: '1rem' }}>{success}</div>}
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+              <button onClick={() => setShowLinkModal(true)} className="submit-btn" style={{ margin: 0 }}>Link Institute</button>
+              <button onClick={() => navigate('/select-module')} className="cancel-btn" style={{ margin: 0 }}>Return Home</button>
+            </div>
           </div>
         </main>
+
+        {showLinkModal && (
+          <div className="modal-overlay" onClick={() => setShowLinkModal(false)}>
+            <div className="modal glass" onClick={e => e.stopPropagation()}>
+              <h2>Link to Institute 🏫</h2>
+              <div className="form-group">
+                <label>Institute Name</label>
+                <input type="text" value={linkData.institute_name} onChange={e => setLinkData({ ...linkData, institute_name: e.target.value })} placeholder="e.g. Racing Club" required />
+              </div>
+              <div className="form-group">
+                <label>Student Name (as registered)</label>
+                <input type="text" value={linkData.student_name} onChange={e => setLinkData({ ...linkData, student_name: e.target.value })} placeholder="e.g. Vaidhy" required />
+              </div>
+              <div className="form-group">
+                <label>Parent Mobile (as registered)</label>
+                <input type="text" value={linkData.parent_mobile} onChange={e => setLinkData({ ...linkData, parent_mobile: e.target.value })} placeholder="e.g. 6383514666" required />
+              </div>
+              <button onClick={handleLinkInstitute} className="submit-btn" disabled={loading}>Link Now</button>
+              <button onClick={() => setShowLinkModal(false)} className="cancel-btn">Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -17,6 +17,8 @@ export default function InstituteDashboard() {
   const [students, setStudents] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [showAddStudent, setShowAddStudent] = useState(false);
+  const [showEditStudent, setShowEditStudent] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [showAddTeacher, setShowAddTeacher] = useState(false);
   const [showEditTeacher, setShowEditTeacher] = useState(false);
   const [showMarkPaid, setShowMarkPaid] = useState(false);
@@ -60,6 +62,7 @@ export default function InstituteDashboard() {
   // Form states
   const [newInstitute, setNewInstitute] = useState({ name: '', address: '', contact_number: '' });
   const [newStudent, setNewStudent] = useState({ student_name: '', parent_mobile: '', monthly_fee: '', due_day: '5', institute: '' });
+  const [editStudentData, setEditStudentData] = useState({ student_name: '', parent_mobile: '', monthly_fee: '', due_day: '5' });
   const [newTeacher, setNewTeacher] = useState({ username: '', base_monthly_salary: 0, working_days_per_month: 26, extra_session_rate: 500, institute: '' });
   const [paymentData, setPaymentData] = useState({ student_profile: '', month: new Date().getMonth() + 1, year: new Date().getFullYear(), amount: '' });
 
@@ -229,6 +232,17 @@ export default function InstituteDashboard() {
       const res = await api.createInstituteStudent(newStudent);
       setSuccess(`${res.message}. Username: ${res.username}`);
       setShowAddStudent(false);
+      loadDashboard();
+    } catch (err: any) { setError(err.message); }
+  };
+
+  const handleUpdateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent) return;
+    try {
+      await api.updateInstituteStudent(selectedStudent.id, editStudentData);
+      setSuccess('Student profile updated!');
+      setShowEditStudent(false);
       loadDashboard();
     } catch (err: any) { setError(err.message); }
   };
@@ -697,6 +711,16 @@ export default function InstituteDashboard() {
                         <td>{s.due_day}th</td>
                         <td style={{ textAlign: 'right' }}>
                           <div className="action-btn-group">
+                            <button className="btn-enhanced btn-blue" onClick={() => {
+                              setSelectedStudent(s);
+                              setEditStudentData({
+                                student_name: s.student_name,
+                                parent_mobile: s.parent_mobile,
+                                monthly_fee: s.monthly_fee,
+                                due_day: s.due_day.toString()
+                              });
+                              setShowEditStudent(true);
+                            }}>✏️ Edit</button>
                             <button className="btn-enhanced btn-orange" onClick={() => { setSelectedStudentForNotice(s); setShowNoticeModal(true); }}>📣 Notice</button>
                             {role === 'OWNER' && <button className="btn-enhanced btn-red" onClick={() => handleUnlinkStudent(s.id)}>🗑️ Unlink</button>}
                             <button className="btn-enhanced btn-blue" onClick={() => api.sendFeeReminder(s.id)}>🔔 Remind</button>
@@ -920,6 +944,22 @@ export default function InstituteDashboard() {
                 <div className="form-group"><label>Due Day (1-31)</label><input type="number" value={newStudent.due_day} onChange={e => setNewStudent({...newStudent, due_day: e.target.value})} required min="1" max="31" /></div>
                 <button type="submit" className="submit-btn">Register Student</button>
                 <button type="button" className="cancel-btn" onClick={() => setShowAddStudent(false)}>Cancel</button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showEditStudent && selectedStudent && (
+          <div className="modal-overlay" onClick={() => setShowEditStudent(false)}>
+            <div className="modal glass" onClick={e => e.stopPropagation()}>
+              <h2>Edit Student: {selectedStudent.student_name} ✏️</h2>
+              <form onSubmit={handleUpdateStudent}>
+                <div className="form-group"><label>Student Full Name</label><input type="text" value={editStudentData.student_name} onChange={e => setEditStudentData({...editStudentData, student_name: e.target.value})} required /></div>
+                <div className="form-group"><label>Parent Mobile Number</label><input type="text" value={editStudentData.parent_mobile} onChange={e => setEditStudentData({...editStudentData, parent_mobile: e.target.value})} required /></div>
+                <div className="form-group"><label>Monthly Fee (₹)</label><input type="number" value={editStudentData.monthly_fee} onChange={e => setEditStudentData({...editStudentData, monthly_fee: e.target.value})} required /></div>
+                <div className="form-group"><label>Due Day (1-31)</label><input type="number" value={editStudentData.due_day} onChange={e => setEditStudentData({...editStudentData, due_day: e.target.value})} required min="1" max="31" /></div>
+                <button type="submit" className="submit-btn">Update Profile</button>
+                <button type="button" className="cancel-btn" onClick={() => setShowEditStudent(false)}>Cancel</button>
               </form>
             </div>
           </div>

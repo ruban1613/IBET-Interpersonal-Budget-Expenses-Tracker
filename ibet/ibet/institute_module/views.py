@@ -414,7 +414,64 @@ class InstituteStudentProfileViewSet(viewsets.ModelViewSet):
             traceback.print_exc()
             return Response({'error': f'Server Error: {str(e)}'}, status=500)
 
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def link_to_institute(self, request):
+        """Allow a student or parent to link their account to an existing institute profile"""
+        institute_name = request.data.get('institute_name')
+        student_name = request.data.get('student_name')
+        parent_mobile = request.data.get('parent_mobile')
+        student_id = request.data.get('student_id') # Optional, for parents
+
+        if not all([institute_name, student_name, parent_mobile]):
+            return Response({'error': 'institute_name, student_name, and parent_mobile are required'}, status=400)
+
+        # Allow parents to link for students, otherwise use logged-in user
+        from student_module.models import User
+        target_user = request.user
+        if student_id:
+            if request.user.persona != 'PARENT':
+                return Response({'error': 'Only parents can link for students.'}, status=403)
+            try:
+                from student_module.models import ParentStudentLink
+                # Check link to ensure parent is authorized
+                link = ParentStudentLink.objects.filter(parent=request.user, student_id=student_id).first()
+                if not link:
+                    return Response({'error': 'No link found between this parent and student.'}, status=403)
+                target_user = link.student
+            except Exception as e:
+                return Response({'error': f'Unauthorized student_id or no link found: {str(e)}'}, status=403)
+
+        # 1. Find the Institute (Case insensitive name)
+        institute = Institute.objects.filter(name__iexact=institute_name).first()
+        if not institute:
+            return Response({'error': f'Institute "{institute_name}" not found.'}, status=404)
+
+        # 2. Find matching student profile (Case insensitive student_name)
+        profile = InstituteStudentProfile.objects.filter(
+            institute=institute, 
+            student_name__iexact=student_name, 
+            parent_mobile=parent_mobile
+        ).first()
+
+        if not profile:
+            return Response({'error': 'No matching student profile found with the provided details in this institute.'}, status=404)
+
+        # 3. Link the target user to the profile
+        profile.user = target_user
+        profile.save()
+
+        # 4. Ensure persona is correct
+        if target_user.persona not in ['STUDENT', 'STUDENT_ACADEMIC', 'PARENT']:
+             target_user.persona = 'STUDENT_ACADEMIC'
+             target_user.save(update_fields=['persona'])
+
+        return Response({
+            'message': f'Successfully linked {target_user.username} to institute profile in {institute.name}.',
+            'profile': InstituteStudentProfileSerializer(profile).data
+        })
+
     @action(detail=True, methods=['post'])
+
     def send_fee_reminder(self, request, pk=None):
         student = self.get_object()
         now = timezone.now()
