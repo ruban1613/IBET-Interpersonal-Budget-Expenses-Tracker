@@ -1,0 +1,5 @@
+- [x] Initialize Git repository in ibet/IBET/
+- [x] Add all files to staging
+- [x] Commit with "Initial commit"
+- [x] Add remote origin https://github.com/ruban1613/ibet.git
+- [x] Push to origin master

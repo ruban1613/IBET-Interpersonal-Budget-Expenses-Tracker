@@ -1,0 +1,37 @@
+nanga vanthu MCA computer Application padikurom epo nanga vanthu 2 sem la irrukom engaluku mini project irruku athula four members ennodha topic vanthu ("Interpersonal budget and expenses tracker ") ethan engaloda project title enga project theme vanthu enna na first naraiya user persona irruku like student, parent, individuals(men or women), couples, roommates (either friends or neighbour or any body),dailywages people, retirees evlo peru user persona act panuvanga ) entha ellam user persona kum oru oru thani features irrukum athu mari1 constraints irrukum important:- oru oru user persona yum oru oru modules. 
+First login, Athuku Aprm user persona selection, select Pandratha thuku etha mari dashboard create agum
+Intha application la multi languages irrukum
+
+1. Constrain college students: intha module  la student dashboard la account info, wallet( save money, send, and receive), reminder( 50% alter 
+,70% and 100% alter kudukum) epdi na, for example: epo student parents months amount- 3000 budget fix panni intha wallet potanga na, antha wallet irukuratha vachi daily expense ennanu calculate panni money ya allocate daily daliyum  oru chat kudukum antha padi padi tha ammount expenses agum for example iniku ennaku 100rs na antha 100 rs  vachi tha full day spend panna num,athu mari daily yum amt fix pani vachirukum evlo amt fix agiruko antha amt mattum tha spend panna mudiyum student drathu nala naraiya spend panunga athunala oru day ku evlo amt the spend panna num nu irruku avangaluku amt theava na parent kita otp vanganum antha opt vachi tha next day amt ahh eduka mudiyum, oru oru thadava amt spend panna panna monthly amt koraiyum koraiya koraiya oru oru vatiyum recalculate pani, amt ahh reallocate panna num daliyum use ku 
+
+2. Parents' constraints: student account monitoring and access. If the parent only accesses the wallet from the dashboard of the student, they want an amount, then the wallet will be accessed, and if the student has extra money, then the authentication will work as the OTP process will work as authentication for the student who wants to take the next day's amount. The parent dashboard has the account info, and they will get the alert message from the student, how much they are using in it, like 50%,100%.
+
+3. Individual constraints: An Individual has a budget based on their income. The expenses will be updated and tracked using the Dashboard. A wallet will be there so that the money can be stored in the App, which would be convenient for the individual.  The budget will be updated day by day, so the Individual can track and adjust their expenditure accordingly. Funds for emergencies will also be present.
+
+4. Couples Constraint: The system will use a shared digital wallet for the couple. Both partners can contribute money to this wallet and view all transactions. To spend from the wallet, a partner must request a specific amount for a particular expense. The other partner must then approve the request before the money is released, ensuring all shared spending is a mutual decision. This design promotes transparency and shared accountability for all expenses.
+
+5. Retriees constraints:
+Retirees' Budget Tracking Requirements
+
+1. Simple interface – easy-to-use app or sheet without complex technical steps.
+
+2. Income tracking – pensions, retirement funds, social security, interest, rental income.
+
+3. Expense categorization – healthcare, daily living, utilities, leisure, insurance.
+
+4. Fixed vs. variable expenses – distinguishing recurring bills from flexible spending.
+
+5. Forecasting tools – to ensure savings last for the expected lifetime.
+
+6.Alerts/reminders – bill payments, low balance warnings.
+
+7. Reports – monthly/annual summaries to track spending patterns.
+
+8. Security – safe handling of sensitive financial data.
+
+6. DAILY WAGES CONSTRAINS:
+A daily wages budget is a financial plan prepared to estimate and control the expenses related to labor employed on a daily wage basis. Many industries, construction projects, agriculture, and small businesses rely heavily on daily wage workers. Since wage costs directly affect overall project costs, preparing a daily wages budget ensures better resource utilization and cost management. If the salary can be processed daily, the wages can be evaluated daily for him/her.
+
+these are the user personas and the constraints 
+
