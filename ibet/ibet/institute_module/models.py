@@ -85,6 +85,37 @@ class InstituteStudentProfile(models.Model):
     def __str__(self):
         return f"{self.student_name} ({self.institute.name})"
 
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        old_fee = None
+        if not is_new:
+            try:
+                old_fee = InstituteStudentProfile.objects.get(pk=self.pk).monthly_fee
+            except InstituteStudentProfile.DoesNotExist:
+                pass
+        
+        super().save(*args, **kwargs)
+        
+        # If the monthly_fee has changed, update the current month's FeePayment record if it exists
+        if not is_new and old_fee is not None and old_fee != self.monthly_fee:
+            now = timezone.now()
+            payment = FeePayment.objects.filter(
+                student_profile=self, 
+                month=now.month, 
+                year=now.year
+            ).first()
+            
+            if payment:
+                payment.total_amount = self.monthly_fee
+                # Recalculate status based on new total
+                if payment.paid_amount >= payment.total_amount:
+                    payment.status = FeePayment.Status.PAID
+                elif payment.paid_amount > 0:
+                    payment.status = FeePayment.Status.PARTIAL
+                else:
+                    payment.status = FeePayment.Status.PENDING
+                payment.save()
+
 class FeePayment(models.Model):
     """
     Tracks fee payments from students.
@@ -176,7 +207,7 @@ class StudentAttendance(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ['student_profile', 'date']
+        unique_together = ['student_profile', 'date', 'marked_by']
         ordering = ['-date']
 
     def __str__(self):

@@ -65,6 +65,7 @@ class InstituteNotificationSerializer(serializers.ModelSerializer):
 
 class StudentAttendanceSerializer(serializers.ModelSerializer):
     student_name = serializers.ReadOnlyField(source='student_profile.student_name')
+    marked_by_username = serializers.ReadOnlyField(source='marked_by.username')
     
     class Meta:
         model = StudentAttendance

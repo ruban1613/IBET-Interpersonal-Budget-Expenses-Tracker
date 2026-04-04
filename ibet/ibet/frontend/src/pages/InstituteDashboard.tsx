@@ -747,29 +747,40 @@ export default function InstituteDashboard() {
 
             <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
               <div className="info-card glass">
-                <h3>Monthly Fee Status 💰</h3>
+                <h3>Current Monthly Fee 💰</h3>
                 {dashboardData.current_fee_status ? (
                   <div style={{ marginTop: '1rem' }}>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: dashboardData.current_fee_status.status === 'PAID' ? '#27ae60' : '#e74c3c' }}>
                       {dashboardData.current_fee_status.status}
                     </div>
-                    <p style={{ margin: '10px 0' }}>Total Monthly Fee: ₹{parseFloat(dashboardData.current_fee_status.total_amount).toFixed(2)}</p>
-                    <p style={{ margin: '10px 0' }}>Amount Paid: ₹{parseFloat(dashboardData.current_fee_status.paid_amount).toFixed(2)}</p>
-                    <p style={{ margin: '10px 0', fontWeight: 'bold', color: '#e74c3c' }}>Remaining: ₹{parseFloat(dashboardData.current_fee_status.pending_amount).toFixed(2)}</p>
+                    <div className="glass" style={{ margin: '15px 0', padding: '15px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)' }}>
+                      <p style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0' }}><span>Total Fee:</span> <strong>₹{parseFloat(dashboardData.current_fee_status.total_amount).toFixed(2)}</strong></p>
+                      <p style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0', color: '#27ae60' }}><span>Amount Paid:</span> <strong>₹{parseFloat(dashboardData.current_fee_status.paid_amount).toFixed(2)}</strong></p>
+                      <hr style={{ opacity: 0.1, margin: '10px 0' }} />
+                      <p style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0', fontWeight: 'bold', color: '#e74c3c', fontSize: '1.1rem' }}><span>Remaining:</span> <span>₹{parseFloat(dashboardData.current_fee_status.pending_amount).toFixed(2)}</span></p>
+                    </div>
+                    {dashboardData.current_fee_status.status !== 'PAID' && (
+                      <p style={{ fontSize: '0.85rem', color: '#f39c12', textAlign: 'center' }}>⚠️ Please clear your dues by the {dashboardData.profile.due_day}th of this month.</p>
+                    )}
                   </div>
                 ) : <p>No fee record for this month.</p>}
               </div>
 
               <div className="info-card glass">
-                <h3>Recent Attendance 📅</h3>
-                <div className="table-container" style={{ marginTop: '1rem' }}>
-                  <table className="statement-table">
-                    <thead><tr><th>Date</th><th>Status</th></tr></thead>
+                <h3>Attendance Summary 📅</h3>
+                <div style={{ textAlign: 'center', margin: '1rem 0' }}>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>{dashboardData.attendance.percentage}%</div>
+                  <p style={{ color: 'var(--text-muted)' }}>Overall Attendance</p>
+                </div>
+                <div className="table-container" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                  <table className="statement-table" style={{ fontSize: '0.85rem' }}>
+                    <thead><tr><th>Date</th><th>Status</th><th>By</th></tr></thead>
                     <tbody>
                       {dashboardData.attendance.recent.map((a: any) => (
                         <tr key={a.id}>
                           <td>{new Date(a.date).toLocaleDateString()}</td>
-                          <td><span className={`tag ${a.status}`}>{a.status}</span></td>
+                          <td><span className={`tag ${a.status}`} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>{a.status}</span></td>
+                          <td style={{ fontSize: '0.75rem', opacity: 0.8 }}>{a.marked_by_username || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -779,19 +790,68 @@ export default function InstituteDashboard() {
             </div>
 
             <div className="info-card glass" style={{ marginTop: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h3>Fee Transaction History 🧾</h3>
+                <span className="tag" style={{ background: 'rgba(52, 152, 219, 0.2)', color: '#3498db' }}>Official Record</span>
+              </div>
+              <div className="table-container">
+                <table className="statement-table">
+                  <thead>
+                    <tr>
+                      <th>Payment Date</th>
+                      <th>Period (MM/YYYY)</th>
+                      <th>Transaction ID</th>
+                      <th>Total Fee</th>
+                      <th>Amount Paid</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboardData.recent_fees?.map((f: any) => (
+                      <tr key={f.id}>
+                        <td>{f.payment_date ? new Date(f.payment_date).toLocaleDateString() : 'Pending'}</td>
+                        <td><strong>{String(f.month).padStart(2, '0')}/{f.year}</strong></td>
+                        <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{f.transaction_id || 'N/A'}</td>
+                        <td>₹{parseFloat(f.total_amount).toFixed(2)}</td>
+                        <td style={{ fontWeight: 'bold', color: '#27ae60' }}>₹{parseFloat(f.paid_amount).toFixed(2)}</td>
+                        <td>
+                          <span className={`tag ${f.status}`} style={{ 
+                            background: f.status === 'PAID' ? '#2ecc71' : (f.status === 'PARTIAL' ? '#f1c40f' : '#e74c3c'),
+                            color: 'white'
+                          }}>
+                            {f.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {(!dashboardData.recent_fees || dashboardData.recent_fees.length === 0) && (
+                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>No transaction records found.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: '1.5rem', padding: '15px', borderRadius: '8px', background: 'rgba(52, 152, 219, 0.05)', border: '1px solid rgba(52, 152, 219, 0.1)' }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  <strong>Note:</strong> This report includes all fees recorded by the institute for your profile. If you notice any discrepancy, please contact the institute office immediately.
+                </p>
+              </div>
+            </div>
+
+            <div className="info-card glass" style={{ marginTop: '2rem' }}>
               <h3>Recent Announcements 📣</h3>
               <div className="table-container" style={{ marginTop: '1rem' }}>
                 <table className="statement-table">
-                  <thead><tr><th>Date</th><th>Message</th></tr></thead>
+                  <thead><tr><th>Date</th><th>Type</th><th>Message</th></tr></thead>
                   <tbody>
                     {dashboardData.notifications?.map((n: any) => (
                       <tr key={n.id}>
                         <td>{new Date(n.sent_at).toLocaleDateString()}</td>
+                        <td><span className="tag" style={{ background: 'rgba(243, 156, 18, 0.2)', color: '#f39c12', fontSize: '0.7rem' }}>{n.notification_type}</span></td>
                         <td>{n.message}</td>
                       </tr>
                     ))}
                     {(!dashboardData.notifications || dashboardData.notifications.length === 0) && (
-                      <tr><td colSpan={2} style={{ textAlign: 'center' }}>No recent announcements</td></tr>
+                      <tr><td colSpan={3} style={{ textAlign: 'center' }}>No recent announcements</td></tr>
                     )}
                   </tbody>
                 </table>

@@ -68,17 +68,20 @@ export default function AcademicPortal() {
       return;
     }
 
-    if (walletBalance < amount) {
-      setError(`Insufficient wallet balance (₹${walletBalance.toFixed(2)}). Please add funds first.`);
+    const pendingAmount = parseFloat(data.current_fee_status.total_amount) - parseFloat(data.current_fee_status.paid_amount);
+
+    if (walletBalance < pendingAmount) {
+      setError(`Insufficient wallet balance (₹${walletBalance.toFixed(2)}). You need ₹${pendingAmount.toFixed(2)} to clear your dues. Please add funds first.`);
       return;
     }
 
-    if (!window.confirm(`Confirm payment of ₹${amount.toFixed(2)} for tuition fees?`)) return;
+    if (!window.confirm(`Confirm payment of ₹${pendingAmount.toFixed(2)} to clear your remaining tuition fees?`)) return;
 
     try {
       setLoading(true);
       setError('');
       setSuccess('Processing your payment...');
+      // We need to ensure the backend supports partial payments or full remaining balance
       await api.payFeeSelf(paymentId);
       setSuccess('Fee paid successfully!');
       loadPortalData();
@@ -226,9 +229,16 @@ export default function AcademicPortal() {
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontSize: '2rem', fontWeight: 800, color: data.current_fee_status?.status === 'PAID' ? '#27ae60' : '#ff8a80' }}>₹{parseFloat(data.current_fee_status?.total_amount || '0').toFixed(2)}</div>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Monthly Fee for {data.current_fee_status ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][data.current_fee_status.month-1] : '---'} {data.current_fee_status?.year || ''}</p>
+              
+              {data.current_fee_status && (
+                <div className="glass" style={{ margin: '15px 0', padding: '15px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  <p style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0', fontSize: '0.9rem' }}><span>Paid:</span> <strong style={{ color: '#27ae60' }}>₹{parseFloat(data.current_fee_status.paid_amount).toFixed(2)}</strong></p>
+                  <p style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0', fontSize: '0.9rem' }}><span>Remaining:</span> <strong style={{ color: '#ff8a80' }}>₹{(parseFloat(data.current_fee_status.total_amount) - parseFloat(data.current_fee_status.paid_amount)).toFixed(2)}</strong></p>
+                </div>
+              )}
             </div>
             <div className="glass" style={{ background: 'rgba(255,255,255,0.1)', padding: '12px', borderRadius: '10px', margin: '1rem 0', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>Wallet: <strong style={{ color: walletBalance < parseFloat(data.current_fee_status?.total_amount || '0') ? '#ff8a80' : '#90EE90' }}>₹{walletBalance.toFixed(2)}</strong></span>
+              <span>Wallet: <strong style={{ color: walletBalance < (parseFloat(data.current_fee_status?.total_amount || '0') - parseFloat(data.current_fee_status?.paid_amount || '0')) ? '#ff8a80' : '#90EE90' }}>₹{walletBalance.toFixed(2)}</strong></span>
               <button onClick={() => setShowDepositModal(true)} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>+ Add Funds</button>
             </div>
             {data.current_fee_status?.status !== 'PAID' && (
@@ -256,7 +266,7 @@ export default function AcademicPortal() {
             <div style={{ marginTop: '1rem', maxHeight: '200px', overflowY: 'auto' }}>
               {data.notifications.length === 0 ? <p style={{ textAlign: 'center', opacity: 0.5, padding: '2rem' }}>No notices</p> : data.notifications.map((n: any) => (
                 <div key={n.id} className="glass" style={{ padding: '10px', borderRadius: '8px', marginBottom: '8px', background: 'rgba(255,255,255,0.1)', borderLeft: '3px solid var(--primary)' }}>
-                  <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>{new Date(n.created_at).toLocaleDateString()}</div>
+                  <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>{new Date(n.sent_at).toLocaleDateString()}</div>
                   <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{n.notification_type.replace('_', ' ')}</div>
                   <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>{n.message}</div>
                 </div>
@@ -266,15 +276,61 @@ export default function AcademicPortal() {
         </div>
 
         <div className="transaction-card glass" style={{ marginTop: '2rem' }}>
+          <h3>Fee Transaction History 🧾</h3>
+          <div className="table-container">
+            <table className="statement-table">
+              <thead>
+                <tr>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Period</th>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Total Fee</th>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Paid</th>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Transaction Date</th>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recent_fees?.map((f: any) => (
+                  <tr key={f.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <td style={{ color: 'rgba(255,255,255,0.8)' }}><strong>{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][f.month-1]} {f.year}</strong></td>
+                    <td style={{ color: 'rgba(255,255,255,0.8)' }}>₹{parseFloat(f.total_amount).toFixed(2)}</td>
+                    <td style={{ color: '#90EE90', fontWeight: 'bold' }}>₹{parseFloat(f.paid_amount).toFixed(2)}</td>
+                    <td style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>{f.payment_date ? new Date(f.payment_date).toLocaleDateString() : '---'}</td>
+                    <td>
+                      <span className={`tag ${f.status}`} style={{ 
+                        fontSize: '0.7rem', 
+                        background: f.status === 'PAID' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)', 
+                        color: f.status === 'PAID' ? '#90EE90' : '#ff8a80',
+                        padding: '2px 8px',
+                        borderRadius: '4px'
+                      }}>
+                        {f.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="transaction-card glass" style={{ marginTop: '2rem' }}>
           <h3>Detailed Attendance Log</h3>
           <div className="table-container">
             <table className="statement-table">
-              <thead><tr><th style={{ color: 'rgba(255,255,255,0.7)' }}>Date</th><th style={{ color: 'rgba(255,255,255,0.7)' }}>Status</th><th style={{ color: 'rgba(255,255,255,0.7)' }}>Remarks</th></tr></thead>
+              <thead>
+                <tr>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Date</th>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Status</th>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Marked By</th>
+                  <th style={{ color: 'rgba(255,255,255,0.7)' }}>Remarks</th>
+                </tr>
+              </thead>
               <tbody>
                 {data.attendance.recent.map((record: any) => (
                   <tr key={record.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <td style={{ color: 'rgba(255,255,255,0.8)' }}>{new Date(record.date).toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</td>
                     <td><span className={`tag ${record.status}`} style={{ background: record.status === 'PRESENT' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: record.status === 'PRESENT' ? '#90EE90' : '#ff8a80' }}>{record.status}</span></td>
+                    <td style={{ color: 'var(--primary)', fontWeight: '600', fontSize: '0.85rem' }}>{record.marked_by_username || 'System'}</td>
                     <td style={{ fontSize: '0.85rem', opacity: 0.6 }}>{record.remarks || '---'}</td>
                   </tr>
                 ))}

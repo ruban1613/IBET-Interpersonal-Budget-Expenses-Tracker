@@ -39,10 +39,7 @@ class StudentAttendanceViewSet(viewsets.ModelViewSet):
         if user.persona == 'INSTITUTE_OWNER':
             return queryset.filter(student_profile__institute__owner=user)
         elif user.persona == 'INSTITUTE_TEACHER':
-            teacher_profile = TeacherProfile.objects.filter(user=user, is_active=True).first()
-            if teacher_profile:
-                return queryset.filter(student_profile__in=teacher_profile.assigned_students.all())
-            return StudentAttendance.objects.none()
+            return queryset.filter(marked_by=user)
         elif user.persona == 'STUDENT':
             return queryset.filter(student_profile__user=user)
         return StudentAttendance.objects.none()
@@ -72,7 +69,8 @@ class StudentAttendanceViewSet(viewsets.ModelViewSet):
             attendance, _ = StudentAttendance.objects.update_or_create(
                 student_profile=profile,
                 date=date,
-                defaults={'status': status_val, 'marked_by': self.request.user}
+                marked_by=self.request.user,
+                defaults={'status': status_val}
             )
             created_records.append(attendance)
 
@@ -566,15 +564,17 @@ class FeePaymentViewSet(viewsets.ModelViewSet):
         try:
             with transaction.atomic():
                 wallet = Wallet.objects.select_for_update().get(user=user)
-                if wallet.balance < payment.total_amount:
-                    return Response({'error': _('Insufficient wallet balance to pay this fee (₹{0})').format(payment.total_amount)}, status=400)
+                pending_amt = payment.total_amount - payment.paid_amount
                 
-                # Deduct funds
-                wallet.withdraw_main(payment.total_amount, description=_('Tuition Fee Payment: {0}').format(payment.student_profile.student_name))
+                if wallet.balance < pending_amt:
+                    return Response({'error': _('Insufficient wallet balance to pay the remaining fee (₹{0})').format(pending_amt)}, status=400)
+                
+                # Deduct funds (Only the remaining balance)
+                wallet.withdraw_main(pending_amt, description=_('Tuition Fee Payment (Balance): {0}').format(payment.student_profile.student_name))
                 
                 # Update Payment Record
-                payment.status = 'PAID'
                 payment.paid_amount = payment.total_amount
+                payment.status = 'PAID'
                 payment.payment_date = timezone.now()
                 payment.remarks = _("Paid via {0} Portal").format(_('Parent') if is_parent else _('Student'))
                 payment.save()
@@ -584,7 +584,7 @@ class FeePaymentViewSet(viewsets.ModelViewSet):
                     institute=payment.student_profile.institute,
                     recipient=payment.student_profile.institute.owner,
                     notification_type='FEE_REMINDER',
-                    message=_("Fee of ₹{0} received from {1}.").format(payment.total_amount, payment.student_profile.student_name)
+                    message=_("Remaining Fee of ₹{0} received from {1}.").format(pending_amt, payment.student_profile.student_name)
                 )
         except Exception as e:
             return Response({'error': str(e)}, status=400)
@@ -679,11 +679,22 @@ class InstituteDashboardView(APIView):
             student_profiles = InstituteStudentProfile.objects.filter(institute__owner=user, is_active=True)
             student_fee_status = {}
             for sp in student_profiles:
-                fee_record = FeePayment.objects.filter(student_profile=sp, month=now.month, year=now.year).first()
-                if fee_record:
-                    student_fee_status[sp.id] = {'total': float(fee_record.total_amount), 'paid': float(fee_record.paid_amount), 'pending': float(fee_record.pending_amount), 'status': fee_record.status}
-                else:
-                    student_fee_status[sp.id] = {'total': float(sp.monthly_fee), 'paid': 0.0, 'pending': float(sp.monthly_fee), 'status': 'PENDING'}
+                fee_record, created = FeePayment.objects.get_or_create(
+                    student_profile=sp, month=now.month, year=now.year,
+                    defaults={'total_amount': sp.monthly_fee, 'paid_amount': 0, 'status': 'PENDING'}
+                )
+                if not created and fee_record.total_amount != sp.monthly_fee:
+                    fee_record.total_amount = sp.monthly_fee
+                    # Recalculate status
+                    if fee_record.paid_amount >= fee_record.total_amount:
+                        fee_record.status = 'PAID'
+                    elif fee_record.paid_amount > 0:
+                        fee_record.status = 'PARTIAL'
+                    else:
+                        fee_record.status = 'PENDING'
+                    fee_record.save()
+                
+                student_fee_status[sp.id] = {'total': float(fee_record.total_amount), 'paid': float(fee_record.paid_amount), 'pending': float(fee_record.pending_amount), 'status': fee_record.status}
 
             return Response({
                 'role': 'OWNER',
@@ -725,17 +736,28 @@ class InstituteDashboardView(APIView):
             # Teachers see only students explicitly assigned to them
             assigned_students = profile.assigned_students.filter(is_active=True)
             
-            # Count attendance only for assigned students
-            attendance_today = StudentAttendance.objects.filter(student_profile__in=assigned_students, date=today).count()
+            # Count attendance only for records marked by THIS teacher
+            attendance_today = StudentAttendance.objects.filter(marked_by=user, date=today).count()
             notifications = InstituteNotification.objects.filter(recipient=user).order_by('-sent_at')[:10]
 
             student_fee_status = {}
             for sp in assigned_students:
-                fee_record = FeePayment.objects.filter(student_profile=sp, month=now.month, year=now.year).first()
-                if fee_record:
-                    student_fee_status[sp.id] = {'total': float(fee_record.total_amount), 'paid': float(fee_record.paid_amount), 'pending': float(fee_record.pending_amount), 'status': fee_record.status}
-                else:
-                    student_fee_status[sp.id] = {'total': float(sp.monthly_fee), 'paid': 0.0, 'pending': float(sp.monthly_fee), 'status': 'PENDING'}
+                fee_record, created = FeePayment.objects.get_or_create(
+                    student_profile=sp, month=now.month, year=now.year,
+                    defaults={'total_amount': sp.monthly_fee, 'paid_amount': 0, 'status': 'PENDING'}
+                )
+                if not created and fee_record.total_amount != sp.monthly_fee:
+                    fee_record.total_amount = sp.monthly_fee
+                    # Recalculate status
+                    if fee_record.paid_amount >= fee_record.total_amount:
+                        fee_record.status = 'PAID'
+                    elif fee_record.paid_amount > 0:
+                        fee_record.status = 'PARTIAL'
+                    else:
+                        fee_record.status = 'PENDING'
+                    fee_record.save()
+                
+                student_fee_status[sp.id] = {'total': float(fee_record.total_amount), 'paid': float(fee_record.paid_amount), 'pending': float(fee_record.pending_amount), 'status': fee_record.status}
             
             return Response({
                 'role': 'TEACHER',
@@ -763,6 +785,18 @@ class InstituteDashboardView(APIView):
                 student_profile=profile, month=now.month, year=now.year,
                 defaults={'total_amount': profile.monthly_fee, 'paid_amount': 0, 'status': 'PENDING'}
             )
+            
+            # If record existed but total_amount doesn't match current profile fee (due to an update), fix it
+            if not created and fee_status.total_amount != profile.monthly_fee:
+                fee_status.total_amount = profile.monthly_fee
+                # Recalculate status
+                if fee_status.paid_amount >= fee_status.total_amount:
+                    fee_status.status = 'PAID'
+                elif fee_status.paid_amount > 0:
+                    fee_status.status = 'PARTIAL'
+                else:
+                    fee_status.status = 'PENDING'
+                fee_status.save()
             
             recent_fees = FeePayment.objects.filter(student_profile=profile).order_by('-year', '-month')
             notifications = InstituteNotification.objects.filter(recipient=effective_user).order_by('-sent_at')[:10]
